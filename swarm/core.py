@@ -1,14 +1,12 @@
 # Standard library imports
+import os
 import copy
 import json
 from collections import defaultdict
-from typing import List, Callable, Union
-
-# Package/library imports
-from openai import OpenAI
-
+from typing import List
 
 # Local imports
+from .client_factory import ClientFactory
 from .util import function_to_json, debug_print, merge_chunk
 from .types import (
     Agent,
@@ -24,9 +22,12 @@ __CTX_VARS_NAME__ = "context_variables"
 
 
 class Swarm:
+    """
+    The Swarm class is the main interface for running agents and handling completions.
+    """
     def __init__(self, client=None):
         if not client:
-            client = OpenAI()
+            client = ClientFactory.create_client(os.getenv("LLM_CLIENT"))
         self.client = client
 
     def get_chat_completion(
@@ -94,8 +95,7 @@ class Swarm:
         debug: bool,
     ) -> Response:
         function_map = {f.__name__: f for f in functions}
-        partial_response = Response(
-            messages=[], agent=None, context_variables={})
+        partial_response = Response(messages=[], agent=None, context_variables={})
 
         for tool_call in tool_calls:
             name = tool_call.function.name
@@ -112,8 +112,7 @@ class Swarm:
                 )
                 continue
             args = json.loads(tool_call.function.arguments)
-            debug_print(
-                debug, f"Processing tool call: {name} with arguments {args}")
+            debug_print(debug, f"Processing tool call: {name} with arguments {args}")
 
             func = function_map[name]
             # pass context_variables to agent functions
@@ -188,8 +187,7 @@ class Swarm:
                 merge_chunk(message, delta)
             yield {"delim": "end"}
 
-            message["tool_calls"] = list(
-                message.get("tool_calls", {}).values())
+            message["tool_calls"] = list(message.get("tool_calls", {}).values())
             if not message["tool_calls"]:
                 message["tool_calls"] = None
             debug_print(debug, "Received completion:", message)
@@ -232,13 +230,29 @@ class Swarm:
         self,
         agent: Agent,
         messages: List,
-        context_variables: dict = {},
+        context_variables: dict = None,
         model_override: str = None,
         stream: bool = False,
         debug: bool = False,
         max_turns: int = float("inf"),
         execute_tools: bool = True,
     ) -> Response:
+        """
+        Executes the main loop for running an agent with the provided messages and context.
+            Args:
+                agent (Agent): The agent to run.
+                messages (List): The list of initial messages.
+                context_variables (dict, optional): A dictionary of context variables. Defaults to {}.
+                model_override (str, optional): An optional model override. Defaults to None.
+                stream (bool, optional): Whether to stream the responses. Defaults to False.
+                debug (bool, optional): Whether to enable debug mode. Defaults to False.
+                max_turns (int, optional): The maximum number of turns to run. Defaults to float("inf").
+                execute_tools (bool, optional): Whether to execute tools. Defaults to True.
+            Returns:
+                Response: The response containing the messages, the active agent, and the updated context variables.
+        """
+        if context_variables is None:
+            context_variables = {}
         if stream:
             return self.run_and_stream(
                 agent=agent,
