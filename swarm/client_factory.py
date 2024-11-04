@@ -42,8 +42,7 @@ class AzureOpenAIClient(BaseClient):
         api_key=None,
         base_url=None,
         api_version=None,
-        azure_deployment=None,
-        organization=None,
+        azure_deployment=None
     ):
         self.api_key = api_key or os.getenv("AZURE_OPENAI_API_KEY")
         self.base_url = base_url or os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -51,15 +50,13 @@ class AzureOpenAIClient(BaseClient):
         self.azure_deployment = azure_deployment or os.getenv(
             "AZURE_OPENAI_DEPLOYMENT_NAME"
         )
-        self.organization = organization or os.getenv("OPENAI_ORG_ID")
 
     def create(self):
         return AzureOpenAI(
             api_key=self.api_key,
             azure_endpoint=self.base_url,
             api_version=self.api_version,
-            azure_deployment=self.azure_deployment,
-            organization=self.organization,
+            azure_deployment=self.azure_deployment
         )
 
 
